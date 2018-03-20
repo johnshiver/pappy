@@ -1,4 +1,4 @@
-package domain
+package user
 
 import (
 	"crypto/aes"
@@ -22,9 +22,6 @@ func main() {
 	// encrypt base64 crypto to original value
 	text := decrypt(key, cryptoText)
 	fmt.Printf(text)
-}
-
-func getDomains(user *User) []*Domain {
 }
 
 // encrypt string to base64 crypto using AES

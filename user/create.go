@@ -28,7 +28,7 @@ func createPassword() string {
 	return strings.Join(upperList, "_")
 }
 
-func Create(db *gorm.DB, user *User) (uint, error) {
+func createUser(db *gorm.DB, user *User) (uint, error) {
 	err := db.Create(user).Error
 	if err != nil {
 		if postgres.IsUniqueConstraintError(err, UniqueConstraintUsername) {

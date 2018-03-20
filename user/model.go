@@ -15,6 +15,15 @@ type User struct {
 	Email        string `gorm:"type:varchar(100);unique"`
 	PasswordHash string
 	CreatedAt    time.Time
+	Domains      []Domain
+}
+
+type Domain struct {
+	ID           uint `gorm:"primary_key"`
+	FQDN         string
+	PasswordHash string
+	CreatedAt    time.Time
+	UserID       uint
 }
 
 type UsernameDuplicateError struct {
