@@ -1,6 +1,7 @@
 package user
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"strconv"
@@ -37,4 +38,23 @@ func createUser(db *gorm.DB, user *User) (uint, error) {
 		return 0, err
 	}
 	return user.ID, nil
+}
+
+func createDomain(db *gorm.DB, domain_name, domain_password, user_password string, user *User) *Domain {
+	key := generateEncryptionKey(user.Email, user_password)
+	enctyped_domain_pw := encrypt(key, domain_password)
+	domain_name = strings.ToLower(domain_name)
+
+	new_domain := Domain{
+		FQDN:         domain_name,
+		PasswordHash: enctyped_domain_pw,
+		UserID:       user.ID,
+	}
+	err := db.Create(&new_domain).Error
+	if err != nil {
+		fmt.Println("there was an error creating db!")
+		log.Panic(err)
+	}
+	fmt.Printf("Domain %s succesfully created!", new_domain.FQDN)
+	return &new_domain
 }
