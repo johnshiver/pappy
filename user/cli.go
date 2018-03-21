@@ -7,6 +7,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 	"github.com/olekukonko/tablewriter"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 func CreateUser(db *gorm.DB) {
@@ -126,9 +127,11 @@ func LogIn(db *gorm.DB) (bool, *User, string) {
 	var email string
 	fmt.Scanln(&email)
 
-	fmt.Print("What is your password?: ")
-	var password string
-	fmt.Scanln(&password)
+	fmt.Println("Enter password: ")
+	password, err := terminal.ReadPassword(0)
+	if err != nil {
+		log.Panic(err)
+	}
 
 	var user User
 	rec_not_found := db.Where("email = ?", email).First(&user).RecordNotFound()
@@ -137,7 +140,7 @@ func LogIn(db *gorm.DB) (bool, *User, string) {
 		return false, &User{}, ""
 	}
 	login_success := comparePasswords(user.PasswordHash, []byte(password))
-	return login_success, &user, password
+	return login_success, &user, string(password)
 
 }
 
