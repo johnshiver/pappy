@@ -3,11 +3,14 @@ package user
 import (
 	"fmt"
 	"log"
+	"os"
+	"strings"
 
 	"github.com/jinzhu/gorm"
+	"github.com/olekukonko/tablewriter"
 )
 
-func CreateUser(db *gorm.DB) *User {
+func CreateUser(db *gorm.DB) {
 
 	fmt.Print("What is the email?: ")
 	var email string
@@ -17,7 +20,7 @@ func CreateUser(db *gorm.DB) *User {
 	var password string
 	fmt.Scanln(&password)
 	if password == "" {
-		password = GeneratePassword()
+		password = createPassword()
 		fmt.Println(password)
 	}
 	hashed_pw := hashAndSalt([]byte(password))
@@ -30,62 +33,107 @@ func CreateUser(db *gorm.DB) *User {
 	if err != nil {
 		log.Panic(err)
 	}
-	return &user
 
+	fmt.Printf("User %s created succesfully!", user.Email)
 }
 
-func CreateDomain(db *gorm.DB) *Domain {
+func CreateDomain(db *gorm.DB) {
 	logged_in, user, pw := LogIn(db)
 	if logged_in == false {
 		fmt.Println("Wasnt able to log in!")
-		return &Domain{}
+		return
 	}
 
 	fmt.Print("What is the domain name?: ")
 	var domain_name string
 	fmt.Scanln(&domain_name)
 
-	domain_pw := createPassword()
-	fmt.Println("Your password: %s", domain_pw)
-	key := user.Email + pw
-	enctyped_domain_pw := encrypt([]byte(key[:32]), domain_pw)
-
-	new_domain := Domain{
-		FQDN:         domain_name,
-		PasswordHash: enctyped_domain_pw,
-		UserID:       user.ID,
-	}
-	err := db.Create(&new_domain).Error
-	if err != nil {
-		fmt.Println("there was an error creating db!")
-		log.Panic(err)
-		return &Domain{}
+	fmt.Print("Password? Leave blank for auto-gen: ")
+	var domain_pw string
+	fmt.Scanln(&domain_pw)
+	if domain_pw == "" {
+		domain_pw = createPassword()
+		fmt.Printf("Your password: %s\n", domain_pw)
 
 	}
-	return &new_domain
 
+	createDomain(db, domain_name, domain_pw, pw, user)
 }
 
-func ListDomains(db *gorm.DB) []*Domain {
+func generateEncryptionKey(components ...string) []byte {
+	const ENCRYPTION_KEY_SIZE = 32
+	combined_components := strings.Join(components, "")
+	// if not len 32, buffer until it is
+	if len(combined_components) > ENCRYPTION_KEY_SIZE {
+		combined_components = combined_components[:ENCRYPTION_KEY_SIZE]
+	}
+	for len(combined_components) < ENCRYPTION_KEY_SIZE {
+		combined_components += "d"
+	}
+
+	return []byte(combined_components)
+}
+
+func ListDomains(db *gorm.DB) {
 	logged_in, user, pw := LogIn(db)
 	if logged_in == false {
 		fmt.Println("Wasnt able to log in!")
-		return []*Domain{
-			&Domain{},
-		}
+		return
 	}
 	var domains []*Domain
 	db.Model(&user).Related(&domains)
-	key := user.Email + pw
+
 	var decrypted_pw string
+	var data [][]string
+	key := generateEncryptionKey(user.Email, pw)
 	for _, domain := range domains {
-		fmt.Println(domain.FQDN)
-		decrypted_pw = decrypt([]byte(key[:32]), domain.PasswordHash)
-		fmt.Println(decrypted_pw)
-
+		decrypted_pw = decrypt(key, domain.PasswordHash)
+		data = append(data, []string{domain.FQDN, decrypted_pw})
 	}
-	return domains
+	printDomains(data)
 
+}
+
+func LookupDomain(db *gorm.DB) {
+	logged_in, user, pw := LogIn(db)
+	if logged_in == false {
+		fmt.Println("Wasnt able to log in!")
+		return
+	}
+
+	fmt.Print("What is the domain name?: ")
+	var domain_name string
+	fmt.Scanln(&domain_name)
+
+	query := "%" + domain_name + "%"
+
+	var domains []*Domain
+	db.Model(&user).Related(&domains).Where("FQDN LIKE ?", query).Find(&domains)
+
+	if len(domains) == 0 {
+		fmt.Printf("Couldnt find %s!\n", domain_name)
+		return
+	}
+
+	var decrypted_pw string
+	var data [][]string
+	key := generateEncryptionKey(user.Email, pw)
+	for _, domain := range domains {
+		decrypted_pw = decrypt(key, domain.PasswordHash)
+		data = append(data, []string{domain.FQDN, decrypted_pw})
+	}
+	printDomains(data)
+
+}
+
+func printDomains(data [][]string) {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Domain", "Password"})
+
+	for _, v := range data {
+		table.Append(v)
+	}
+	table.Render()
 }
 
 func LogIn(db *gorm.DB) (bool, *User, string) {

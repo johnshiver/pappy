@@ -46,42 +46,45 @@ func main() {
 	var add bool
 	var generate bool
 	var list bool
+	var lookup bool
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
 			Name:        "add",
-			Usage:       "add new object",
+			Usage:       "add new object to database",
 			Destination: &add,
 		},
 		cli.BoolFlag{
 			Name:        "generate",
-			Usage:       "add new object",
+			Usage:       "generates object but doesnt persist",
 			Destination: &generate,
 		},
 		cli.BoolFlag{
 			Name:        "list",
-			Usage:       "list objects",
+			Usage:       "list objects in database",
 			Destination: &list,
+		},
+		cli.BoolFlag{
+			Name:        "lookup",
+			Usage:       "lookup objects in database",
+			Destination: &lookup,
 		},
 	}
 
 	app.Commands = []cli.Command{
 		{
-			Name:    "user",
-			Aliases: []string{"c"},
-			Usage:   "Actions related to users",
+			Name:  "user",
+			Usage: "Actions related to users",
 			Action: func(c *cli.Context) error {
 				if add == true {
-					new_user := user.CreateUser(db)
-					fmt.Println(new_user)
+					user.CreateUser(db)
 				}
 
 				return nil
 			},
 		},
 		{
-			Name:    "password",
-			Aliases: []string{"a"},
-			Usage:   "takes no arguments",
+			Name:  "password",
+			Usage: "takes no arguments",
 			Action: func(c *cli.Context) error {
 				if generate == true {
 					pw := user.GeneratePassword()
@@ -91,18 +94,16 @@ func main() {
 			},
 		},
 		{
-			Name:    "domain",
-			Aliases: []string{"a"},
-			Usage:   "takes create and list",
+			Name:  "domain",
+			Usage: "--create, --list, --lookup",
 			Action: func(c *cli.Context) error {
 				if add == true {
-					domain := user.CreateDomain(db)
-					fmt.Println(domain)
-
+					user.CreateDomain(db)
 				} else if list == true {
 					user.ListDomains(db)
+				} else if lookup == true {
+					user.LookupDomain(db)
 				}
-
 				return nil
 			},
 		},
