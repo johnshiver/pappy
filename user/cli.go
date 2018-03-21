@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/jinzhu/gorm"
 	"github.com/olekukonko/tablewriter"
@@ -60,20 +59,6 @@ func CreateDomain(db *gorm.DB) {
 	createDomain(db, domain_name, domain_pw, pw, user)
 }
 
-func generateEncryptionKey(components ...string) []byte {
-	const ENCRYPTION_KEY_SIZE = 32
-	combined_components := strings.Join(components, "")
-	// if not len 32, buffer until it is
-	if len(combined_components) > ENCRYPTION_KEY_SIZE {
-		combined_components = combined_components[:ENCRYPTION_KEY_SIZE]
-	}
-	for len(combined_components) < ENCRYPTION_KEY_SIZE {
-		combined_components += "d"
-	}
-
-	return []byte(combined_components)
-}
-
 func ListDomains(db *gorm.DB) {
 	logged_in, user, pw := LogIn(db)
 	if logged_in == false {
@@ -108,7 +93,7 @@ func LookupDomain(db *gorm.DB) {
 	query := "%" + domain_name + "%"
 
 	var domains []*Domain
-	db.Model(&user).Related(&domains).Where("FQDN LIKE ?", query).Find(&domains)
+	db.Where("user_id = ? AND FQDN LIKE ?", user.ID, query).Find(&domains)
 
 	if len(domains) == 0 {
 		fmt.Printf("Couldnt find %s!\n", domain_name)
