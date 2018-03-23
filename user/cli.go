@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/jinzhu/gorm"
 	"github.com/olekukonko/tablewriter"
@@ -52,7 +53,22 @@ func CreateDomain(db *gorm.DB) {
 	var domain_pw string
 	fmt.Scanln(&domain_pw)
 	if domain_pw == "" {
+		fmt.Print("Password character limit? Leave blank for no limit")
+		var char_limit string
+		fmt.Scanln(&char_limit)
+		c_limit, err := strconv.Atoi(char_limit)
+		if err != nil {
+			fmt.Println("There was an error reading your character limit! Did you submit an integer?")
+			log.Panic(err)
+		}
 		domain_pw = createPassword()
+		if c_limit > 0 {
+			if c_limit > len(domain_pw) {
+				c_limit = len(domain_pw)
+			}
+			domain_pw = domain_pw[:c_limit]
+		}
+		domain_pw = domain_pw[:c_limit]
 		fmt.Printf("Your password: %s\n", domain_pw)
 
 	}
