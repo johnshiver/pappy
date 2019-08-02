@@ -7,7 +7,7 @@ import (
 	"sort"
 
 	"github.com/jinzhu/gorm"
-	"github.com/johnshiver/password_manager/user"
+	"github.com/johnshiver/pappy/user"
 	"github.com/urfave/cli"
 )
 
