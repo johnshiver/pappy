@@ -4,6 +4,8 @@ go 1.12
 
 require (
 	github.com/jinzhu/gorm v1.9.10
+	github.com/jmoiron/sqlx v1.2.0
+	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/olekukonko/tablewriter v0.0.1
 	github.com/sethvargo/go-diceware v0.0.0-20181024230814-74428ac65346
