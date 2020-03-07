@@ -31,14 +31,18 @@ func main() {
 
 	cmdName := os.Args[1]
 	switch cmdName {
+	case "new":
+		env.CreateUser()
 	case "list":
 		env.LogIn()
-		env.ListDomains()
+		env.ListPasswords()
 	case "add":
 		env.LogIn()
 		env.CreatePassword()
 	case "delete":
 		env.LogIn()
+	case "generate":
+		generatePassword(-1)
 	}
 
 }

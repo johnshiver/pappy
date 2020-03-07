@@ -12,86 +12,85 @@ import (
 
 func (env *runEnv) CreateUser() {
 
-	fmt.Print("What is the email?: ")
-	var email string
-	_, _ = fmt.Scanln(&email)
+	var (
+		username string
+		password string
+	)
 
-	fmt.Print("What is the password? Leave blank for autogen: ")
-	var password string
-	_, _ = fmt.Scanln(&password)
+	fmt.Println("Creating a new user!")
+	fmt.Print("What is your username?: ")
+	_, err := fmt.Scanln(&username)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Print("What is your master password? Leave blank to autogen: ")
+	_, err = fmt.Scanln(&password)
+	if err != nil {
+		panic(err)
+	}
+
 	if password == "" {
-		password = createPassword()
-		fmt.Println(password)
+		password = generatePassword(-1)
+		fmt.Printf("your new master password: %s\n", password)
 	}
 	hashedPw := hashAndSalt([]byte(password))
-
 	user := User{
-		Email:        email,
+		UserName:     username,
 		PasswordHash: hashedPw,
 	}
-	_, err := createUser(db, &user)
+	env.PersistUser(user)
+
+	fmt.Printf("%s created succesfully!", user.UserName)
+}
+
+func (env *runEnv) CreatePassword() {
+	var (
+		domainName string
+		domainPW   string
+		charLimit  string
+	)
+
+	fmt.Printf("Creating a new password for user %s\n", env.user.UserName)
+	fmt.Print("What website / service is this password for?: ")
+	_, err := fmt.Scanln(&domainName)
 	if err != nil {
 		log.Panic(err)
 	}
 
-	fmt.Printf("User %s created succesfully!", user.Email)
-}
-
-func (env *runEnv) CreatePassword() {
-	loggedIn, user, pw := LogIn(db)
-	if loggedIn == false {
-		fmt.Println("Wasnt able to log in!")
-		return
+	fmt.Print("What is the password? Leave blank for auto-gen: ")
+	_, err = fmt.Scanln(&domainPW)
+	if err != nil {
+		log.Panic(err)
 	}
-
-	fmt.Print("What website / service is this password for?: ")
-	var domainName string
-	fmt.Scanln(&domainName)
-
-	fmt.Print("Password? Leave blank for auto-gen: ")
-	var domain_pw string
-	fmt.Scanln(&domain_pw)
-	if domain_pw == "" {
-		fmt.Print("Password character limit? Leave blank for no limit")
-		var char_limit string
-		fmt.Scanln(&char_limit)
-		if len(char_limit) == 0 {
-			char_limit = "0"
+	if domainPW == "" {
+		fmt.Print("Alright, I'll auto-gen a pw for you")
+		fmt.Print("Does your password have a character limit? Leave blank for no limit")
+		fmt.Scanln(&charLimit)
+		if len(charLimit) == 0 {
+			charLimit = "0"
 		}
-		c_limit, err := strconv.Atoi(char_limit)
+		cLimit, err := strconv.Atoi(charLimit)
 		if err != nil {
 			fmt.Println("There was an error reading your character limit! Did you submit an integer?")
 			log.Panic(err)
 		}
-		domain_pw = createPassword()
-		if c_limit > 0 {
-			if c_limit > len(domain_pw) {
-				c_limit = len(domain_pw)
-			}
-			domain_pw = domain_pw[:c_limit]
-		}
-		fmt.Printf("Your password: %s\n", domain_pw)
+		domainPW = generatePassword(cLimit)
+		fmt.Printf("Your new password for %s: %s\n", domainName, domainPW)
 
 	}
-
-	createDomain(db, domainName, domain_pw, pw, user)
+	env.createPassword(domainName, domainPW)
 }
 
-func (env *runEnv) ListDomains() {
-	loggedIn, user, pw := LogIn(db)
-	if loggedIn == false {
-		fmt.Println("Wasnt able to log in!")
-		return
-	}
-	var domains []*Domain
-	db.Model(&user).Related(&domains)
-
-	var decrypted_pw string
-	var data [][]string
-	key := generateEncryptionKey(user.Email, pw)
-	for _, domain := range domains {
-		decrypted_pw = decrypt(key, domain.PasswordHash)
-		data = append(data, []string{domain.FQDN, decrypted_pw})
+func (env *runEnv) ListPasswords() {
+	var (
+		decryptedPw string
+		data        [][]string
+	)
+	passwords := env.GetPasswords()
+	for _, pw := range passwords {
+		decryptedPw = decrypt(env.encryptionKey, pw.PasswordHash)
+		data = append(data, []string{pw.Location, decryptedPw})
 	}
 	printDomains(data)
 }
@@ -107,9 +106,13 @@ func printDomains(data [][]string) {
 }
 
 func (env *runEnv) LogIn() {
+	fmt.Println("Lets get you logged in")
 	fmt.Print("What is your username: ")
 	var username string
-	fmt.Scanln(&username)
+	_, err := fmt.Scanln(&username)
+	if err != nil {
+		log.Panic(err)
+	}
 
 	fmt.Println("Enter master password: ")
 	password, err := terminal.ReadPassword(0)
@@ -119,12 +122,13 @@ func (env *runEnv) LogIn() {
 
 	user, err := env.FindByUserName(username)
 	if user == nil {
-		panic(fmt.Errorf("couldnt find user %s", username))
+		log.Panic(fmt.Errorf("couldnt find user %s", username))
 	}
 	loginSuccess := comparePasswords([]byte(user.PasswordHash), password)
 	if !loginSuccess {
-		panic(fmt.Errorf("failed to login with credentials"))
+		log.Panic(fmt.Errorf("failed to login with credentials"))
 	}
+
 	key := generateEncryptionKey(user.UserName, string(password))
 
 	env.mtx.Lock()
@@ -132,8 +136,4 @@ func (env *runEnv) LogIn() {
 
 	env.encryptionKey = key
 	env.user = user
-}
-
-func GeneratePassword() string {
-	return createPassword()
 }

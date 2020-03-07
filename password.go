@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"math/rand"
@@ -40,7 +41,7 @@ func generatePassword(passwordLength int) string {
 	return newPassword[:passwordLength]
 }
 
-func (env *runEnv) createDomain(domainName, domainPassword, userPassword string, user *User) *Domain {
+func (env *runEnv) createPassword() error {
 
 	// put SQL here
 
@@ -59,4 +60,21 @@ func (env *runEnv) createDomain(domainName, domainPassword, userPassword string,
 	}
 	fmt.Printf("Domain %s succesfully created!", newDomain.FQDN)
 	return &newDomain
+}
+
+func (env *runEnv) GetPasswords() []Password {
+	const pwSQL = `
+         SELECT *
+         FROM passwords
+         WHERE user_id=$1
+    `
+	var pws []Password
+	err := env.db.Select(pws, pwSQL, env.user.ID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
+		panic(err)
+	}
+	return pws
 }

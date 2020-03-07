@@ -14,8 +14,12 @@ type User struct {
 	CreatedAt time.Time
 }
 
-func (env *runEnv) PersistUser(u *User) {
-
+func (env *runEnv) PersistUser(u User) {
+	const insertSQL = `
+           INSERT into users (username, hashed_pw)
+           VALUES ($1, $2)
+	`
+	env.db.MustExec(insertSQL, u.UserName, u.PasswordHash)
 }
 
 func (env *runEnv) FindByUserName(userName string) (*User, error) {
