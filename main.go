@@ -21,6 +21,7 @@ type runEnv struct {
 func initEnv() *runEnv {
 	var env runEnv
 	env.db = config.GetDB()
+	env.createTables()
 	return &env
 }
 
@@ -33,15 +34,13 @@ func main() {
 	env := initEnv()
 	defer env.db.Close()
 
-	env.createTables()
-
 	if len(os.Args[1:]) != 1 {
 		panic(fmt.Errorf("expected 1 cmd arg, received %d", len(os.Args[1:])))
 	}
 
 	cmdName := os.Args[1]
 	switch cmdName {
-	case "new_user":
+	case "new_user", "nu":
 		env.CreateUser()
 	case "list":
 		env.LogIn()
@@ -49,10 +48,10 @@ func main() {
 	case "add":
 		env.LogIn()
 		env.CreatePassword()
-	case "delete":
+	case "delete", "del", "d":
 		env.LogIn()
-	case "generate":
-		generatePassword(-1)
+	case "generate", "gen", "g":
+		fmt.Println(generatePassword(-1))
 	}
 
 }
