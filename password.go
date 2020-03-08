@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"math/rand"
 	"strconv"
@@ -18,6 +17,23 @@ type Password struct {
 	PasswordHash string
 	CreatedAt    time.Time
 	UserID       uint
+}
+
+func (env *runEnv) CreatePasswordsTable() {
+	createSQL := `
+        CREATE TABLE if not exists passwords (
+            id INTEGER PRIMARY KEY,
+            location TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                
+            user_id INTEGER NOT NULL,
+                                             
+           FOREIGN KEY(user_id) REFERENCES users(id)
+		);
+	`
+	env.db.MustExec(createSQL)
 }
 
 func generatePassword(passwordLength int) string {
@@ -45,21 +61,21 @@ func (env *runEnv) createPassword() error {
 
 	// put SQL here
 
-	key := generateEncryptionKey(user.ID, userPassword)
-	enctypedDomainPw := encrypt(key, domainPassword)
-	domainName = strings.ToLower(domainName)
-
-	newDomain := Domain{
-		FQDN:         domainName,
-		PasswordHash: enctypedDomainPw,
-		UserID:       user.ID,
-	}
-	if err != nil {
-		fmt.Println("there was an error creating db!")
-		log.Panic(err)
-	}
-	fmt.Printf("Domain %s succesfully created!", newDomain.FQDN)
-	return &newDomain
+	//key := generateEncryptionKey(user.ID, userPassword)
+	//enctypedDomainPw := encrypt(key, domainPassword)
+	//domainName = strings.ToLower(domainName)
+	//
+	//newDomain := Domain{
+	//	FQDN:         domainName,
+	//	PasswordHash: enctypedDomainPw,
+	//	UserID:       user.ID,
+	//}
+	//if err != nil {
+	//	fmt.Println("there was an error creating db!")
+	//	log.Panic(err)
+	//}
+	//fmt.Printf("Domain %s succesfully created!", newDomain.FQDN)
+	return nil
 }
 
 func (env *runEnv) GetPasswords() []Password {

@@ -14,10 +14,23 @@ type User struct {
 	CreatedAt time.Time
 }
 
+func (env *runEnv) CreateUserTable() {
+	createSQL := `
+        CREATE TABLE if not exists users (
+            id INTEGER PRIMARY KEY,
+            user_name TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
+		)
+	`
+	env.db.MustExec(createSQL)
+}
+
 func (env *runEnv) PersistUser(u User) {
 	const insertSQL = `
-           INSERT into users (username, hashed_pw)
-           VALUES ($1, $2)
+           INSERT into users (user_name, password_hash)
+           VALUES (LOWER($1), $2)
 	`
 	env.db.MustExec(insertSQL, u.UserName, u.PasswordHash)
 }

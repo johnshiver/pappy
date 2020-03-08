@@ -19,21 +19,25 @@ func (env *runEnv) CreateUser() {
 
 	fmt.Println("Creating a new user!")
 	fmt.Print("What is your username?: ")
-	_, err := fmt.Scanln(&username)
-	if err != nil {
-		panic(err)
+
+	userNameRaw := GetUserTextInput()
+	if len(userNameRaw) > 1 || len(userNameRaw) == 0 {
+		log.Panic(fmt.Errorf("userName should be a single input, you gave %v", userNameRaw))
 	}
+	username = userNameRaw[0]
 
 	fmt.Print("What is your master password? Leave blank to autogen: ")
-	_, err = fmt.Scanln(&password)
-	if err != nil {
-		panic(err)
+	passwordRaw := GetUserTextInput()
+	if len(userNameRaw) > 1 {
+		log.Panic(fmt.Errorf("password should be a single input or blank, you gave %v", userNameRaw))
 	}
-
-	if password == "" {
+	if len(passwordRaw) == 0 {
 		password = generatePassword(-1)
 		fmt.Printf("your new master password: %s\n", password)
+	} else {
+		password = passwordRaw[0]
 	}
+
 	hashedPw := hashAndSalt([]byte(password))
 	user := User{
 		UserName:     username,
@@ -79,7 +83,7 @@ func (env *runEnv) CreatePassword() {
 		fmt.Printf("Your new password for %s: %s\n", domainName, domainPW)
 
 	}
-	env.createPassword(domainName, domainPW)
+	env.createPassword()
 }
 
 func (env *runEnv) ListPasswords() {
@@ -121,6 +125,9 @@ func (env *runEnv) LogIn() {
 	}
 
 	user, err := env.FindByUserName(username)
+	if err != nil {
+		log.Panic(err)
+	}
 	if user == nil {
 		log.Panic(fmt.Errorf("couldnt find user %s", username))
 	}

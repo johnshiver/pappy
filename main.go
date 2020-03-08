@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/jmoiron/sqlx"
+
+	"github.com/johnshiver/pappy/config"
 )
 
 type runEnv struct {
@@ -18,12 +20,20 @@ type runEnv struct {
 
 func initEnv() *runEnv {
 	var env runEnv
-	env.db = GetDB()
+	env.db = config.GetDB()
 	return &env
+}
+
+func (env *runEnv) createTables() {
+	env.CreateUserTable()
+	env.CreatePasswordsTable()
 }
 
 func main() {
 	env := initEnv()
+	defer env.db.Close()
+
+	env.createTables()
 
 	if len(os.Args[1:]) != 1 {
 		panic(fmt.Errorf("expected 1 cmd arg, received %d", len(os.Args[1:])))
@@ -31,7 +41,7 @@ func main() {
 
 	cmdName := os.Args[1]
 	switch cmdName {
-	case "new":
+	case "new_user":
 		env.CreateUser()
 	case "list":
 		env.LogIn()
