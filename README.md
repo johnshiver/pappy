@@ -9,29 +9,18 @@ this program better!
 
 The master user password and the  individual domain passwords are encrypted on disk.
 The master password is a one way encryption using bcrypt, and the domain passwords take
-the plain text master password (after it has been verified) combined with email to create key to encrypt the
+the plain text master password (after it has been verified) combined with username to create key to encrypt the
 domain passwords.
 
-## Installation
+## Installation From Source
 ```
-go get
-go install
+go build
 ```
-TODO: I dont actually know if those install instructions work
 
-Pappy stores its information in a postgres database.  These env vars must be set:
-
-```
-db_user = os.Getenv("PW_MAN_DB_USER")
-db_password = os.Getenv("PW_MAN_DB_PW")
-db_name = os.Getenv("PW_MAN_DB_NAME")
-```
+Pappy stores its information in a sqlite database.  See the config package to understand
+how to modify the database file location.
 
 ## Usage
 ```
-pappy --add user
-pappy --add domain
-pappy --list domain
-pappy --lookup domain
-pappy --generate password
+pappy -h
 ```

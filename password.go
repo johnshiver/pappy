@@ -85,7 +85,6 @@ func (pd *PasswordDao) DeletePassword(userID uint, pwLoc string) {
          DELETE FROM passwords WHERE user_id=$1 AND location=lower($2)
     `
 	pd.db.MustExec(deleteSQL, userID, pwLoc)
-
 }
 
 func generatePassword(passwordLength int) string {
