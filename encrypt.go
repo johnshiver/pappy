@@ -7,9 +7,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
 

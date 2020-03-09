@@ -7,14 +7,13 @@ import (
 
 type User struct {
 	ID           uint
-	UserName     string
-	PasswordHash string
-	Passwords    []Password
+	UserName     string `db:"user_name"`
+	PasswordHash string `db:"password_hash"`
 
-	CreatedAt time.Time
+	CreatedAt time.Time `db:"created_at"`
 }
 
-func (env *runEnv) CreateUserTable() {
+func (env *runEnv) createUserTable() {
 	createSQL := `
         CREATE TABLE if not exists users (
             id INTEGER PRIMARY KEY,
@@ -27,7 +26,7 @@ func (env *runEnv) CreateUserTable() {
 	env.db.MustExec(createSQL)
 }
 
-func (env *runEnv) PersistUser(u User) {
+func (env *runEnv) persistUser(u User) {
 	const insertSQL = `
            INSERT into users (user_name, password_hash)
            VALUES (LOWER($1), $2)
@@ -35,7 +34,7 @@ func (env *runEnv) PersistUser(u User) {
 	env.db.MustExec(insertSQL, u.UserName, u.PasswordHash)
 }
 
-func (env *runEnv) FindByUserName(userName string) (*User, error) {
+func (env *runEnv) findByUserName(userName string) (*User, error) {
 	const userSQL = `
        SELECT ID, user_name, password_hash, created_at
        FROM users

@@ -2,24 +2,25 @@ package main
 
 import (
 	"database/sql"
-	"log"
 	"math/rand"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/sethvargo/go-diceware/diceware"
+	log "github.com/sirupsen/logrus"
 )
 
 type Password struct {
 	ID           uint
 	Location     string
 	PasswordHash string
-	CreatedAt    time.Time
 	UserID       uint
+
+	CreatedAt time.Time
 }
 
-func (env *runEnv) CreatePasswordsTable() {
+func (env *runEnv) createPasswordsTable() {
 	createSQL := `
         CREATE TABLE if not exists passwords (
             id INTEGER PRIMARY KEY,
@@ -51,31 +52,18 @@ func generatePassword(passwordLength int) string {
 	}
 
 	newPassword := strings.Join(upperList, "_")
-	if passwordLength < 0 {
+	if passwordLength <= 0 {
 		return newPassword
 	}
 	return newPassword[:passwordLength]
 }
 
-func (env *runEnv) createPassword() error {
-
-	// put SQL here
-
-	//key := generateEncryptionKey(user.ID, userPassword)
-	//enctypedDomainPw := encrypt(key, domainPassword)
-	//domainName = strings.ToLower(domainName)
-	//
-	//newDomain := Domain{
-	//	FQDN:         domainName,
-	//	PasswordHash: enctypedDomainPw,
-	//	UserID:       user.ID,
-	//}
-	//if err != nil {
-	//	fmt.Println("there was an error creating db!")
-	//	log.Panic(err)
-	//}
-	//fmt.Printf("Domain %s succesfully created!", newDomain.FQDN)
-	return nil
+func (env *runEnv) createPassword(pw *Password) {
+	const insertSQL = `
+           INSERT into passwords (location, password_hash, user_id)
+           VALUES (LOWER($1), $2, $3)
+	`
+	env.db.MustExec(insertSQL, pw.Location, pw.PasswordHash, pw.UserID)
 }
 
 func (env *runEnv) GetPasswords() []Password {
@@ -90,7 +78,7 @@ func (env *runEnv) GetPasswords() []Password {
 		if err == sql.ErrNoRows {
 			return nil
 		}
-		panic(err)
+		log.Fatal(err)
 	}
 	return pws
 }

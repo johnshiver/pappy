@@ -2,21 +2,19 @@ package main
 
 import (
 	"bufio"
-	"os"
+	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
-func GetUserTextInput() []string {
-	userInput := make([]string, 0)
-	scanner := bufio.NewScanner(os.Stdin)
-	for {
-		scanner.Scan()
-		text := scanner.Text()
-		if len(text) != 0 {
-			userInput = append(userInput, text)
-		} else {
-			break
-		}
-
+func (env *runEnv) GetUserTextInput() string {
+	reader := bufio.NewReader(env.userInput)
+	text, err := reader.ReadString('\n')
+	if err != nil {
+		log.Fatal(err)
 	}
-	return userInput
+
+	// ReadString keeps delim, remove it here
+	text = strings.TrimSuffix(text, "\n")
+	return text
 }

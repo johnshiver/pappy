@@ -1,12 +1,12 @@
 package config
 
 import (
-	"log"
 	"os"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/kelseyhightower/envconfig"
 	_ "github.com/mattn/go-sqlite3"
+	log "github.com/sirupsen/logrus"
 )
 
 var c *Config
