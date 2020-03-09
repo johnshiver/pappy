@@ -79,6 +79,8 @@ func main() {
 		switch *action {
 		case "gen", "generate", "g":
 			fmt.Println(generatePassword(-1))
+		case "db", "dbloc":
+			fmt.Println(config.GetDBFilePath())
 		}
 	}
 
