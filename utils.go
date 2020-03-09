@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"os"
 	"strings"
 
+	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -17,4 +19,13 @@ func (env *runEnv) GetUserTextInput() string {
 	// ReadString keeps delim, remove it here
 	text = strings.TrimSuffix(text, "\n")
 	return text
+}
+
+func printDataTable(dataHeader []string, data [][]string) {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(dataHeader)
+	for _, v := range data {
+		table.Append(v)
+	}
+	table.Render()
 }

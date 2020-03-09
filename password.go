@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/sethvargo/go-diceware/diceware"
 	log "github.com/sirupsen/logrus"
 )
@@ -14,13 +15,28 @@ import (
 type Password struct {
 	ID           uint
 	Location     string
-	PasswordHash string
+	PasswordHash string `db:"password_hash"`
 	UserID       uint
 
 	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
-func (env *runEnv) createPasswordsTable() {
+type PasswordDao struct {
+	db *sqlx.DB
+}
+
+func NewPasswordDao(db *sqlx.DB) *PasswordDao {
+	return &PasswordDao{db: db}
+}
+
+type PasswordService interface {
+	CreatePasswordsTable()
+	CreatePassword(pw *Password)
+	GetPasswords(userID uint) []*Password
+}
+
+func (pd *PasswordDao) CreatePasswordsTable() {
 	createSQL := `
         CREATE TABLE if not exists passwords (
             id INTEGER PRIMARY KEY,
@@ -34,7 +50,32 @@ func (env *runEnv) createPasswordsTable() {
            FOREIGN KEY(user_id) REFERENCES users(id)
 		);
 	`
-	env.db.MustExec(createSQL)
+	pd.db.MustExec(createSQL)
+}
+
+func (pd *PasswordDao) CreatePassword(pw *Password) {
+	const insertSQL = `
+           INSERT into passwords (location, password_hash, user_id)
+           VALUES (LOWER($1), $2, $3)
+	`
+	pd.db.MustExec(insertSQL, pw.Location, pw.PasswordHash, pw.UserID)
+}
+
+func (pd *PasswordDao) GetPasswords(userID uint) []*Password {
+	const pwSQL = `
+         SELECT location, password_hash
+         FROM passwords
+         WHERE user_id=$1
+    `
+	var pws []*Password
+	err := pd.db.Select(&pws, pwSQL, userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
+		log.Fatal(err)
+	}
+	return pws
 }
 
 func generatePassword(passwordLength int) string {
@@ -56,29 +97,4 @@ func generatePassword(passwordLength int) string {
 		return newPassword
 	}
 	return newPassword[:passwordLength]
-}
-
-func (env *runEnv) createPassword(pw *Password) {
-	const insertSQL = `
-           INSERT into passwords (location, password_hash, user_id)
-           VALUES (LOWER($1), $2, $3)
-	`
-	env.db.MustExec(insertSQL, pw.Location, pw.PasswordHash, pw.UserID)
-}
-
-func (env *runEnv) GetPasswords() []Password {
-	const pwSQL = `
-         SELECT *
-         FROM passwords
-         WHERE user_id=$1
-    `
-	var pws []Password
-	err := env.db.Select(pws, pwSQL, env.user.ID)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil
-		}
-		log.Fatal(err)
-	}
-	return pws
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -13,8 +14,9 @@ import (
 )
 
 type runEnv struct {
-	db        *sqlx.DB
 	userInput io.Reader
+	userSvc   UserService
+	pwdSvc    PasswordService
 
 	user          *User
 	encryptionKey []byte
@@ -27,41 +29,54 @@ func init() {
 	log.SetLevel(log.WarnLevel)
 }
 
-func initEnv() *runEnv {
+func initEnv(db *sqlx.DB) *runEnv {
 	var env runEnv
-	env.db = config.GetDB()
 	env.userInput = os.Stdin
-	env.createTables()
+	env.userSvc = NewUserDao(db)
+	env.pwdSvc = NewPasswordDao(db)
 	return &env
 }
 
 func (env *runEnv) createTables() {
-	env.createUserTable()
-	env.createPasswordsTable()
+	env.userSvc.CreateUserTable()
+	env.pwdSvc.CreatePasswordsTable()
 }
 
 func main() {
-	env := initEnv()
-	defer env.db.Close()
+	db := config.GetDB()
+	defer db.Close()
 
-	if len(os.Args[1:]) != 1 {
-		panic(fmt.Errorf("expected 1 cmd arg, received %d", len(os.Args[1:])))
-	}
+	env := initEnv(db)
+	env.createTables()
 
-	cmdName := os.Args[1]
-	switch cmdName {
-	case "new_user", "nu":
-		env.CreateUser()
-	case "list":
-		env.LogIn()
-		env.ListPasswords()
-	case "add":
-		env.LogIn()
-		env.CreatePassword()
-	case "delete", "del", "d":
-		env.LogIn()
-	case "generate", "gen", "g":
-		fmt.Println(generatePassword(-1))
+	tgtObject := flag.String("object", "", "object to perform action on: user / password")
+	action := flag.String("action", "", "action to perform on object: create / list / delete")
+
+	flag.Parse()
+
+	switch *tgtObject {
+	case "user":
+		switch *action {
+		case "create":
+			env.CreateUser()
+		case "list":
+			// this is a security hazard, I dont really care for my personal use
+			env.ListUsers()
+		}
+	case "password":
+		switch *action {
+		case "create":
+			env.LogIn()
+			env.CreatePassword()
+		case "list":
+			env.LogIn()
+			env.ListPasswords()
+		}
+	default:
+		switch *action {
+		case "gen", "generate", "g":
+			fmt.Println(generatePassword(-1))
+		}
 	}
 
 }

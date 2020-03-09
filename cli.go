@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 
-	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -25,19 +23,27 @@ func (env *runEnv) CreateUser() {
 	fmt.Println("It is VERY important to remember this password; your account cannot be recovered if you forget it.")
 	fmt.Print("What is your master password? Leave blank to autogen: ")
 	password = env.GetUserTextInput()
-	fmt.Printf("your password %s\n", password)
 	if password == "" {
 		password = generatePassword(-1)
-		fmt.Printf("your master password is: %v\n", password)
 	}
+	fmt.Printf("your password %s\n", password)
 
 	hashedPw := hashAndSalt([]byte(password))
 	user := User{
 		UserName:     username,
 		PasswordHash: hashedPw,
 	}
-	env.persistUser(user)
+	env.userSvc.CreateUser(user)
 	fmt.Printf("%s created succesfully!", user.UserName)
+}
+
+func (env *runEnv) ListUsers() {
+	var userData [][]string
+	users := env.userSvc.GetUsers()
+	for _, u := range users {
+		userData = append(userData, []string{u.UserName})
+	}
+	printDataTable([]string{"username"}, userData)
 }
 
 func (env *runEnv) CreatePassword() {
@@ -54,9 +60,12 @@ func (env *runEnv) CreatePassword() {
 	fmt.Print("What is the password? Leave blank for auto-gen: ")
 	password = env.GetUserTextInput()
 	if password == "" {
-		fmt.Print("Alright, I'll auto-gen a pw for you")
-		fmt.Print("Does your password have a character limit? Leave blank for no limit")
+		fmt.Println("Alright, I'll auto-gen a pw for you")
+		fmt.Print("Does your password have a character limit? Leave blank for no limit: ")
 		charLimit = env.GetUserTextInput()
+		if charLimit == "" {
+			charLimit = "-1"
+		}
 		cLimit, err := strconv.Atoi(charLimit)
 		if err != nil {
 			log.Fatal(fmt.Errorf("converting character limit to integer: %v", err))
@@ -71,30 +80,17 @@ func (env *runEnv) CreatePassword() {
 		PasswordHash: hashedPw,
 		UserID:       env.user.ID,
 	}
-	env.createPassword(&newPassword)
+	env.pwdSvc.CreatePassword(&newPassword)
 }
 
 func (env *runEnv) ListPasswords() {
-	var (
-		decryptedPw string
-		data        [][]string
-	)
-	passwords := env.GetPasswords()
+	var pwdData [][]string
+	passwords := env.pwdSvc.GetPasswords(env.user.ID)
 	for _, pw := range passwords {
-		decryptedPw = decrypt(env.encryptionKey, pw.PasswordHash)
-		data = append(data, []string{pw.Location, decryptedPw})
+		decryptedPw := decrypt(env.encryptionKey, pw.PasswordHash)
+		pwdData = append(pwdData, []string{pw.Location, decryptedPw})
 	}
-	printDomains(data)
-}
-
-func printDomains(data [][]string) {
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Domain", "Password"})
-
-	for _, v := range data {
-		table.Append(v)
-	}
-	table.Render()
+	printDataTable([]string{"Location", "Password"}, pwdData)
 }
 
 func (env *runEnv) LogIn() {
@@ -112,7 +108,7 @@ func (env *runEnv) LogIn() {
 		log.Fatal(err)
 	}
 
-	user, err := env.findByUserName(username)
+	user, err := env.userSvc.FindByUsername(username)
 	if err != nil {
 		log.Fatal(err)
 	}

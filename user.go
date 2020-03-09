@@ -3,6 +3,9 @@ package main
 import (
 	"database/sql"
 	"time"
+
+	"github.com/jmoiron/sqlx"
+	log "github.com/sirupsen/logrus"
 )
 
 type User struct {
@@ -13,7 +16,22 @@ type User struct {
 	CreatedAt time.Time `db:"created_at"`
 }
 
-func (env *runEnv) createUserTable() {
+type UserDao struct {
+	db *sqlx.DB
+}
+
+func NewUserDao(db *sqlx.DB) *UserDao {
+	return &UserDao{db: db}
+}
+
+type UserService interface {
+	CreateUserTable()
+	CreateUser(u User)
+	GetUsers() []*User
+	FindByUsername(userName string) (*User, error)
+}
+
+func (ud *UserDao) CreateUserTable() {
 	createSQL := `
         CREATE TABLE if not exists users (
             id INTEGER PRIMARY KEY,
@@ -23,18 +41,18 @@ func (env *runEnv) createUserTable() {
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
 		)
 	`
-	env.db.MustExec(createSQL)
+	ud.db.MustExec(createSQL)
 }
 
-func (env *runEnv) persistUser(u User) {
+func (ud *UserDao) CreateUser(u User) {
 	const insertSQL = `
            INSERT into users (user_name, password_hash)
            VALUES (LOWER($1), $2)
 	`
-	env.db.MustExec(insertSQL, u.UserName, u.PasswordHash)
+	ud.db.MustExec(insertSQL, u.UserName, u.PasswordHash)
 }
 
-func (env *runEnv) findByUserName(userName string) (*User, error) {
+func (ud *UserDao) FindByUsername(userName string) (*User, error) {
 	const userSQL = `
        SELECT ID, user_name, password_hash, created_at
        FROM users
@@ -42,7 +60,7 @@ func (env *runEnv) findByUserName(userName string) (*User, error) {
        LIMIT 1
     `
 	var user User
-	err := env.db.Get(&user, userSQL, userName)
+	err := ud.db.Get(&user, userSQL, userName)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -50,4 +68,20 @@ func (env *runEnv) findByUserName(userName string) (*User, error) {
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (ud *UserDao) GetUsers() []*User {
+	const userSQL = `
+         SELECT user_name
+         FROM users
+    `
+	var users []*User
+	err := ud.db.Select(&users, userSQL)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
+		log.Fatal(err)
+	}
+	return users
 }
