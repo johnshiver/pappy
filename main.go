@@ -49,29 +49,29 @@ func main() {
 	env := initEnv(db)
 	env.createTables()
 
-	tgtObject := flag.String("object", "", "object to perform action on: user / password")
-	action := flag.String("action", "", "action to perform on object: create / list / delete")
+	tgtObject := flag.String("o", "", "object to perform action on: user / password")
+	action := flag.String("a", "", "action to perform on object: create / list / delete")
 
 	flag.Parse()
 
 	switch *tgtObject {
-	case "user":
+	case "user", "u":
 		switch *action {
-		case "create":
+		case "create", "c":
 			env.CreateUser()
-		case "list":
+		case "list", "l":
 			// this is a security hazard, I dont really care for my personal use
 			env.ListUsers()
 		}
-	case "password":
+	case "password", "p":
 		switch *action {
-		case "create":
+		case "create", "c":
 			env.LogIn()
 			env.CreatePassword()
-		case "list":
+		case "list", "l":
 			env.LogIn()
 			env.ListPasswords()
-		case "delete":
+		case "delete", "d'":
 			env.LogIn()
 			env.DeletePassword()
 		}
