@@ -1,4 +1,4 @@
-package user
+package main
 
 import (
 	"crypto/aes"
@@ -7,9 +7,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -30,31 +30,27 @@ func hashAndSalt(pwd []byte) string {
 	return string(hash)
 }
 
-func comparePasswords(hashedPwd string, plainPwd []byte) bool {
-	// Since we'll be getting the hashed password from the DB it
-	// will be a string so we'll need to convert it to a byte slice
-	byteHash := []byte(hashedPwd)
-	err := bcrypt.CompareHashAndPassword(byteHash, plainPwd)
+func comparePasswords(hashedPwd, plainPwd []byte) bool {
+	err := bcrypt.CompareHashAndPassword(hashedPwd, plainPwd)
 	if err != nil {
 		log.Println(err)
 		return false
 	}
-
 	return true
 }
 
 func generateEncryptionKey(components ...string) []byte {
-	const ENCRYPTION_KEY_SIZE = 32
-	combined_components := strings.Join(components, "")
+	const EncryptionKeySize = 32
+	combinedComponents := strings.Join(components, "")
 	// if not len 32, buffer until it is
-	if len(combined_components) > ENCRYPTION_KEY_SIZE {
-		combined_components = combined_components[:ENCRYPTION_KEY_SIZE]
+	if len(combinedComponents) > EncryptionKeySize {
+		combinedComponents = combinedComponents[:EncryptionKeySize]
 	}
-	for len(combined_components) < ENCRYPTION_KEY_SIZE {
-		combined_components += "d"
+	for len(combinedComponents) < EncryptionKeySize {
+		combinedComponents += "d"
 	}
 
-	return []byte(combined_components)
+	return []byte(combinedComponents)
 }
 
 // encrypt string to base64 crypto using AES
