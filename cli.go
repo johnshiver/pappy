@@ -93,6 +93,14 @@ func (env *runEnv) ListPasswords() {
 	printDataTable([]string{"Location", "Password"}, pwdData)
 }
 
+func (env *runEnv) DeletePassword() {
+	fmt.Printf("Deleting a password for user %v\n", env.user.UserName)
+	fmt.Print("Which location are you deleting?: ")
+	pwdLoc := env.GetUserTextInput()
+	env.pwdSvc.DeletePassword(env.user.ID, pwdLoc)
+	fmt.Println("password deleted!")
+}
+
 func (env *runEnv) LogIn() {
 	var (
 		username string

@@ -34,20 +34,22 @@ type PasswordService interface {
 	CreatePasswordsTable()
 	CreatePassword(pw *Password)
 	GetPasswords(userID uint) []*Password
+	DeletePassword(userID uint, pwLoc string)
 }
 
 func (pd *PasswordDao) CreatePasswordsTable() {
 	createSQL := `
         CREATE TABLE if not exists passwords (
             id INTEGER PRIMARY KEY,
-            location TEXT NOT NULL UNIQUE,
+            location TEXT NOT NULL,
             password_hash TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 
             user_id INTEGER NOT NULL,
                                              
-           FOREIGN KEY(user_id) REFERENCES users(id)
+           FOREIGN KEY(user_id) REFERENCES users(id),
+           UNIQUE(user_id, location)
 		);
 	`
 	pd.db.MustExec(createSQL)
@@ -76,6 +78,14 @@ func (pd *PasswordDao) GetPasswords(userID uint) []*Password {
 		log.Fatal(err)
 	}
 	return pws
+}
+
+func (pd *PasswordDao) DeletePassword(userID uint, pwLoc string) {
+	const deleteSQL = `
+         DELETE FROM passwords WHERE user_id=$1 AND location=lower($2)
+    `
+	pd.db.MustExec(deleteSQL, userID, pwLoc)
+
 }
 
 func generatePassword(passwordLength int) string {

@@ -71,6 +71,9 @@ func main() {
 		case "list":
 			env.LogIn()
 			env.ListPasswords()
+		case "delete":
+			env.LogIn()
+			env.DeletePassword()
 		}
 	default:
 		switch *action {
