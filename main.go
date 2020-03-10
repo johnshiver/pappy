@@ -71,7 +71,7 @@ func main() {
 		case "list", "l":
 			env.LogIn()
 			env.ListPasswords()
-		case "delete", "d'":
+		case "delete", "d":
 			env.LogIn()
 			env.DeletePassword()
 		}
