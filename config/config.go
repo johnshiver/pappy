@@ -25,10 +25,10 @@ func GetDB() *sqlx.DB {
 	checkOrCreatDBFiles()
 	db, err := sqlx.Open("sqlite3", GetDBFilePath())
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 	if err := db.Ping(); err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 	return db
 }
@@ -40,7 +40,7 @@ func GetDBFilePath() string {
 func getDBDirPath() string {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 	return homeDir + "/" + c.DBDirName
 
@@ -48,13 +48,13 @@ func getDBDirPath() string {
 
 func checkOrCreatDBFiles() {
 	if err := os.Mkdir(getDBDirPath(), 0777); err != nil && !os.IsExist(err) {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
 	if _, err := os.Stat(GetDBFilePath()); os.IsNotExist(err) {
 		_, err := os.Create(GetDBFilePath())
 		if err != nil {
-			log.Panic(err)
+			log.Fatal(err)
 		}
 	}
 }
