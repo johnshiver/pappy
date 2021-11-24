@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"math/rand"
 	"strconv"
@@ -12,6 +13,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type PasswordService interface {
+	CreatePasswordsTable(ctx context.Context, db *sqlx.DB)
+	CreatePassword(ctx context.Context, db *sqlx.DB, pw *Password)
+	GetPasswords(ctx context.Context, db *sqlx.DB, userID uint) []*Password
+	DeletePassword(ctx context.Context, db *sqlx.DB, userID uint, pwLoc string)
+}
+
 type Password struct {
 	ID           uint
 	Location     string
@@ -22,69 +30,61 @@ type Password struct {
 	UpdatedAt time.Time
 }
 
-type PasswordDao struct {
-	db *sqlx.DB
+type PasswordDao struct {}
+
+func NewPasswordDao() PasswordDao {
+	return PasswordDao{}
 }
 
-func NewPasswordDao(db *sqlx.DB) *PasswordDao {
-	return &PasswordDao{db: db}
+const createPasswordsTableSQL = `
+CREATE TABLE if not exists passwords (
+	id INTEGER PRIMARY KEY,
+	location TEXT NOT NULL,
+	password_hash TEXT NOT NULL,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		 
+	user_id INTEGER NOT NULL,
+										
+   FOREIGN KEY(user_id) REFERENCES users(id),
+   UNIQUE(user_id, location)
+);
+`
+
+func (pd PasswordDao) CreatePasswordsTable(ctx context.Context, db *sqlx.Tx) {
+	db.MustExecContext(ctx, createPasswordsTableSQL)
 }
 
-type PasswordService interface {
-	CreatePasswordsTable()
-	CreatePassword(pw *Password)
-	GetPasswords(userID uint) []*Password
-	DeletePassword(userID uint, pwLoc string)
+const createPasswordSQL = `
+INSERT into passwords (location, password_hash, user_id)
+VALUES (LOWER($1), $2, $3)
+`
+func (pd PasswordDao) CreatePassword(ctx context.Context, db *sqlx.Tx, pw *Password) {
+	db.MustExecContext(ctx, createPasswordSQL, pw.Location, pw.PasswordHash, pw.UserID)
 }
 
-func (pd *PasswordDao) CreatePasswordsTable() {
-	createSQL := `
-        CREATE TABLE if not exists passwords (
-            id INTEGER PRIMARY KEY,
-            location TEXT NOT NULL,
-            password_hash TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                
-            user_id INTEGER NOT NULL,
-                                             
-           FOREIGN KEY(user_id) REFERENCES users(id),
-           UNIQUE(user_id, location)
-		);
-	`
-	pd.db.MustExec(createSQL)
-}
-
-func (pd *PasswordDao) CreatePassword(pw *Password) {
-	const insertSQL = `
-           INSERT into passwords (location, password_hash, user_id)
-           VALUES (LOWER($1), $2, $3)
-	`
-	pd.db.MustExec(insertSQL, pw.Location, pw.PasswordHash, pw.UserID)
-}
-
-func (pd *PasswordDao) GetPasswords(userID uint) []*Password {
-	const pwSQL = `
-         SELECT location, password_hash
-         FROM passwords
-         WHERE user_id=$1
-    `
+const selectPasswordsSQL = `
+SELECT location, password_hash
+FROM passwords
+WHERE user_id=$1
+`
+func (pd PasswordDao) GetPasswords(ctx context.Context, db *sqlx.Tx, userID uint) ([]*Password, error) {
 	var pws []*Password
-	err := pd.db.Select(&pws, pwSQL, userID)
+	err := db.SelectContext(ctx, &pws, selectPasswordsSQL, userID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil
+			return nil, nil
 		}
-		log.Fatal(err)
+		return nil, err
 	}
-	return pws
+	return pws, nil
 }
 
-func (pd *PasswordDao) DeletePassword(userID uint, pwLoc string) {
-	const deleteSQL = `
-         DELETE FROM passwords WHERE user_id=$1 AND location=lower($2)
-    `
-	pd.db.MustExec(deleteSQL, userID, pwLoc)
+const deletePasswordSQL = `DELETE FROM passwords WHERE user_id=$1 AND location=lower($2)`
+
+func (pd PasswordDao) DeletePassword(ctx context.Context, db *sqlx.DB, userID uint, pwLoc string) error {
+	_, err := db.ExecContext(ctx, deletePasswordSQL, userID, pwLoc)
+	return err
 }
 
 func generatePassword(passwordLength int) string {
@@ -107,3 +107,4 @@ func generatePassword(passwordLength int) string {
 	}
 	return newPassword[:passwordLength]
 }
+

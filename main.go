@@ -24,10 +24,6 @@ type runEnv struct {
 	mtx sync.Mutex
 }
 
-func init() {
-	log.SetOutput(os.Stdout)
-	log.SetLevel(log.WarnLevel)
-}
 
 func initEnv(db *sqlx.DB) *runEnv {
 	var env runEnv
@@ -43,6 +39,8 @@ func (env *runEnv) createTables() {
 }
 
 func main() {
+	log.SetOutput(os.Stdout)
+	log.SetLevel(log.WarnLevel)
 	db := config.GetDB()
 	defer db.Close()
 
