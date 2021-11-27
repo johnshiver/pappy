@@ -13,14 +13,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func hashAndSalt(pwd []byte) string {
+const encryptionKeySize = 32
 
-	fmt.Println("Hashing your pw...")
+func hashAndSalt(pwd []byte) (string, error) {
+	log.Println("hashing your pw...")
 	hash, err := bcrypt.GenerateFromPassword(pwd, bcrypt.DefaultCost)
 	if err != nil {
-		log.Fatal(err)
+		return "", fmt.Errorf("while hashing and salting password: %w", err)
 	}
-	return string(hash)
+	return string(hash), nil
 }
 
 func comparePasswords(hashedPwd, plainPwd []byte) bool {
@@ -33,13 +34,12 @@ func comparePasswords(hashedPwd, plainPwd []byte) bool {
 }
 
 func generateEncryptionKey(components ...string) []byte {
-	const EncryptionKeySize = 32
 	combinedComponents := strings.Join(components, "")
-	// if not len 32, buffer until it is
-	if len(combinedComponents) > EncryptionKeySize {
-		combinedComponents = combinedComponents[:EncryptionKeySize]
+	// if not len encryptionKeySize, buffer until it is
+	if len(combinedComponents) > encryptionKeySize {
+		combinedComponents = combinedComponents[:encryptionKeySize]
 	}
-	for len(combinedComponents) < EncryptionKeySize {
+	for len(combinedComponents) < encryptionKeySize {
 		combinedComponents += "d"
 	}
 
@@ -47,25 +47,24 @@ func generateEncryptionKey(components ...string) []byte {
 }
 
 // encrypt string to base64 crypto using AES
-func encrypt(key []byte, text string) string {
-	plaintext := []byte(text)
+func encrypt(key, plaintext []byte) (string, error) {
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		log.Fatal(err)
+		return "", fmt.Errorf("while creating new cipher: %w", err)
 	}
 
 	// The IV needs to be unique, but not secure. Therefore it's common to
 	// include it at the beginning of the ciphertext.
 	ciphertext := make([]byte, aes.BlockSize+len(plaintext))
 	iv := ciphertext[:aes.BlockSize]
-	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		log.Fatal(err)
+	if _, err = io.ReadFull(rand.Reader, iv); err != nil {
+		 return "", fmt.Errorf("while reading ciphertext: %w", err)
 	}
 
 	stream := cipher.NewCFBEncrypter(block, iv)
 	stream.XORKeyStream(ciphertext[aes.BlockSize:], plaintext)
-	return base64.URLEncoding.EncodeToString(ciphertext)
+	return base64.URLEncoding.EncodeToString(ciphertext), nil
 }
 
 // decrypt from base64 to decrypted string

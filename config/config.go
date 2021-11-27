@@ -1,15 +1,17 @@
 package config
 
 import (
-	"os"
-
+	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/kelseyhightower/envconfig"
 	_ "github.com/mattn/go-sqlite3"
 	log "github.com/sirupsen/logrus"
+	"os"
 )
 
-var c *Config
+
+const envPrefix = "PAPPY"
+var c Config
 
 type Config struct {
 	DBDirName  string `required:"true" split_words:"true" default:".pappy"`
@@ -17,8 +19,7 @@ type Config struct {
 }
 
 func init() {
-	c = &Config{}
-	envconfig.MustProcess("PAPPY", c)
+	envconfig.MustProcess(envPrefix, &c)
 }
 
 func GetDB() *sqlx.DB {
@@ -27,14 +28,14 @@ func GetDB() *sqlx.DB {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := db.Ping(); err != nil {
+	if err = db.Ping(); err != nil {
 		log.Fatal(err)
 	}
 	return db
 }
 
 func GetDBFilePath() string {
-	return getDBDirPath() + "/" + c.DBFileName
+	return fmt.Sprintf("%s/%s", getDBDirPath(), c.DBFileName)
 }
 
 func getDBDirPath() string {
@@ -42,7 +43,7 @@ func getDBDirPath() string {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return homeDir + "/" + c.DBDirName
+	return fmt.Sprintf("%s/%s", homeDir, c.DBDirName)
 
 }
 
@@ -52,7 +53,7 @@ func checkOrCreatDBFiles() {
 	}
 
 	if _, err := os.Stat(GetDBFilePath()); os.IsNotExist(err) {
-		_, err := os.Create(GetDBFilePath())
+		_, err = os.Create(GetDBFilePath())
 		if err != nil {
 			log.Fatal(err)
 		}

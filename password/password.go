@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/sethvargo/go-diceware/diceware"
-	log "github.com/sirupsen/logrus"
 )
 
 type PasswordService interface {
@@ -38,16 +38,18 @@ func NewPasswordDao() PasswordDao {
 
 const createPasswordsTableSQL = `
 CREATE TABLE if not exists passwords (
-	id INTEGER PRIMARY KEY,
-	location TEXT NOT NULL,
-	password_hash TEXT NOT NULL,
-	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-	updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		 
-	user_id INTEGER NOT NULL,
-										
-   FOREIGN KEY(user_id) REFERENCES users(id),
-   UNIQUE(user_id, location)
+    
+id INTEGER PRIMARY KEY,
+location TEXT NOT NULL,
+password_hash TEXT NOT NULL,
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	 
+user_id INTEGER NOT NULL,
+									   
+FOREIGN KEY(user_id) REFERENCES users(id),
+UNIQUE(user_id, location)
+
 );
 `
 
@@ -80,20 +82,26 @@ func (pd PasswordDao) GetPasswords(ctx context.Context, db *sqlx.Tx, userID uint
 	return pws, nil
 }
 
-const deletePasswordSQL = `DELETE FROM passwords WHERE user_id=$1 AND location=lower($2)`
+const deletePasswordSQL = `
+DELETE FROM passwords
+WHERE user_id=$1 AND location=lower($2)
+`
 
 func (pd PasswordDao) DeletePassword(ctx context.Context, db *sqlx.DB, userID uint, pwLoc string) error {
 	_, err := db.ExecContext(ctx, deletePasswordSQL, userID, pwLoc)
 	return err
 }
 
-func generatePassword(passwordLength int) string {
+
+func generatePassword(passwordLength int) (string, error) {
 	list, err := diceware.Generate(6)
 	if err != nil {
-		log.Fatal(err)
+		return "", fmt.Errorf("while generating num list: %w", err)
 	}
-	var upperList []string
-	var randInt int
+	var (
+		upperList []string
+	randInt int
+	)
 	for _, word := range list {
 		word = strings.Title(word)
 		randInt = rand.Intn(9)
@@ -102,9 +110,11 @@ func generatePassword(passwordLength int) string {
 	}
 
 	newPassword := strings.Join(upperList, "_")
+
+	// if password length is less than 0, don't cut anything off
 	if passwordLength <= 0 {
-		return newPassword
+		return newPassword, nil
 	}
-	return newPassword[:passwordLength]
+	return newPassword[:passwordLength], nil
 }
 
